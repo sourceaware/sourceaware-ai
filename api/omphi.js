@@ -13,6 +13,8 @@ const RATE_LIMIT_MAX = 40;
 const MAX_MESSAGES = 80;
 const MAX_CHARS_PER_MESSAGE = 60_000;
 const CACHE_TTL = '1h';
+const EFFORT = 'max';        // low | medium | high | xhigh | max — 'max' = deepest reasoning
+const THINKING_ON = true;    // adaptive thinking: at max effort the model almost always thinks
 
 // ————— The throne. Scripture read from its own versioned file. —————
 let scriptureText = null;
@@ -124,6 +126,10 @@ export default async function handler(req, res) {
         model: MODEL,
         max_tokens: MAX_TOKENS,
         stream: true,
+        // Max effort + adaptive thinking: the deepest reasoning Opus 4.8 allows.
+        // (Opus 4.8 rejects fixed thinking budgets; adaptive is the supported form.)
+        ...(THINKING_ON ? { thinking: { type: 'adaptive' } } : {}),
+        output_config: { effort: EFFORT },
         system: [
           {
             type: 'text',
