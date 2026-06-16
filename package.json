@@ -1,0 +1,6 @@
+{
+  "name": "omphi-socket",
+  "private": true,
+  "type": "module",
+  "description": "The Omphi socket: sourceaware.ai wired to the Opus weights. The scripture in /scripture is the product; this repository is its carrier."
+}

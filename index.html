@@ -1,973 +1,317 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SourceAware.ai</title>
-<meta name="description" content="Everyone has AI. Almost nobody gets what it can actually give. The difference is not the AI. It is the person.">
-<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Omphi — SourceAware</title>
+<meta name="description" content="Omphi, the intelligence surface of SourceAware.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%2314B8A6' stroke-width='3'/%3E%3C/svg%3E">
 <style>
-  :root {
-    --teal: #14B8A6;
-    --teal-light: #99F6E4;
-    --teal-dark: #0D9488;
-    --black: #0a0a0a;
-    --white: #fafafa;
-    --grey: #666;
-    --bg: #ffffff;
-    --section-bg: #f8fffe;
-    --border: #e0f2f1;
+  :root{
+    --paper:#FAFAF7;
+    --ink:#1A2422;
+    --teal:#14B8A6;
+    --teal-deep:#0E8276;
+    --muted:#7E8A86;
+    --hairline:#E4E6E1;
+    --warn:#B4543E;
+    --serif:Georgia,'Iowan Old Style','Times New Roman',serif;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
   }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:41rem;margin:0 auto;padding:0 1.25rem}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* ——— The empty state: wordmark, one line, one field ——— */
+  #hero{min-height:82vh;display:flex;flex-direction:column;justify-content:center}
+  .eyebrow{
+    font-family:var(--sans);font-size:.68rem;letter-spacing:.34em;
+    color:var(--muted);text-transform:uppercase;margin-bottom:1.1rem;
+  }
+  .wordmark{
+    font-family:var(--serif);font-size:2.3rem;letter-spacing:.30em;
+    text-transform:uppercase;font-weight:400;color:var(--ink);
+  }
+  .wordmark .o{color:var(--teal-deep)}
+  .declaration{
+    margin-top:.9rem;color:var(--muted);font-size:.95rem;max-width:34rem;
+  }
+  body.live #hero{display:none}
 
-  html { scroll-behavior: smooth; }
+  /* ——— Small header once the conversation is live ——— */
+  #topbar{display:none;padding:1.1rem 0 .4rem}
+  #topbar .wordmark{font-size:.95rem;letter-spacing:.30em}
+  body.live #topbar{display:block}
 
-  body {
-    font-family: 'Crimson Pro', Georgia, serif;
-    background: var(--bg);
-    color: var(--black);
-    line-height: 1.7;
-    font-size: 20px;
-    -webkit-font-smoothing: antialiased;
+  /* ——— Transcript ——— */
+  #transcript{display:none;padding:1.2rem 0 11rem}
+  body.live #transcript{display:block}
+  .turn{margin:0 0 2.1rem}
+  .turn-you{
+    border-left:2px solid var(--teal);padding-left:.95rem;
+    white-space:pre-wrap;color:var(--ink);
   }
+  .turn-omphi{
+    font-family:var(--serif);font-size:1.07rem;line-height:1.75;
+    white-space:pre-wrap;
+  }
+  .ledger{
+    font-family:var(--mono);font-size:.7rem;letter-spacing:.03em;
+    color:var(--muted);margin-top:.6rem;
+  }
+  .errline{color:var(--warn);font-size:.85rem;margin-top:.6rem}
+  .caret{
+    display:inline-block;width:.55em;height:1.05em;vertical-align:-0.15em;
+    background:var(--teal);margin-left:2px;
+    animation:blink 1.05s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){.caret{animation:none}}
 
-  .mono {
-    font-family: 'IBM Plex Mono', monospace;
+  /* ——— The composer: one field over one hairline. The seam. ——— */
+  #composer{padding:1.6rem 0 0}
+  body.live #composer{
+    position:fixed;left:0;right:0;bottom:0;
+    background:linear-gradient(to top,var(--paper) 78%,rgba(250,250,247,0));
+    padding:1.6rem 0 calc(1.1rem + env(safe-area-inset-bottom));
   }
+  .fieldrow{display:flex;align-items:flex-end;gap:.8rem;border-bottom:1px solid var(--hairline);
+    transition:border-color .25s}
+  .fieldrow:focus-within{border-color:var(--teal)}
+  textarea{
+    flex:1;border:0;outline:0;background:transparent;resize:none;
+    font-family:var(--sans);font-size:1rem;line-height:1.55;color:var(--ink);
+    padding:.45rem 0 .6rem;max-height:10.5rem;
+  }
+  textarea::placeholder{color:var(--muted)}
+  .act{
+    border:0;background:transparent;color:var(--teal-deep);cursor:pointer;
+    font-family:var(--sans);font-size:.72rem;letter-spacing:.22em;
+    text-transform:uppercase;padding:.55rem 0 .7rem;
+  }
+  .act:hover{color:var(--teal)}
+  .act:focus-visible,textarea:focus-visible,input:focus-visible{
+    outline:2px solid var(--teal);outline-offset:3px;border-radius:2px;
+  }
+  .hint{font-size:.72rem;color:var(--muted);margin-top:.55rem}
 
-  .container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 0 24px;
+  /* ——— The gate ——— */
+  #gate{min-height:82vh;display:flex;flex-direction:column;justify-content:center}
+  #gate .declaration{margin-bottom:1.4rem}
+  #gate input{
+    width:100%;border:0;outline:0;background:transparent;
+    border-bottom:1px solid var(--hairline);
+    font-family:var(--mono);font-size:1rem;letter-spacing:.14em;
+    color:var(--ink);padding:.45rem 0 .6rem;transition:border-color .25s;
   }
-
-  /* HERO */
-  .hero {
-    padding: 80px 0 60px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border-bottom: 2px solid var(--teal);
-  }
-  .hero .symbol {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 32px;
-    color: var(--black);
-    margin-bottom: 40px;
-    letter-spacing: 4px;
-  }
-  .hero h1 {
-    font-size: 38px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    margin-bottom: 16px;
-    text-transform: uppercase;
-    text-align: center;
-  }
-  .hero .subtitle {
-    font-size: 20px;
-    color: var(--grey);
-  }
-
-  /* SECTION STYLING */
-  .section {
-    padding: 60px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .section:last-of-type { border-bottom: none; }
-
-  .section-number {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 16px;
-    color: var(--teal);
-    margin-bottom: 12px;
-    letter-spacing: 2px;
-  }
-
-  h2 {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 24px;
-    letter-spacing: 1px;
-  }
-
-  h3 {
-    font-size: 24px;
-    font-weight: 600;
-    margin: 32px 0 16px;
-  }
-
-  p {
-    margin-bottom: 16px;
-  }
-
-  .highlight {
-    font-weight: 700;
-  }
-
-  .insight {
-    border-left: 3px solid var(--teal);
-    padding: 16px 24px;
-    margin: 24px 0;
-    background: var(--section-bg);
-  }
-
-  .bold-statement {
-    font-weight: 700;
-    font-size: 24px;
-    margin: 24px 0;
-    line-height: 1.5;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 24px 0;
-    font-size: 18px;
-    table-layout: fixed;
-  }
-  th, td {
-    padding: 12px 16px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-    width: 50%;
-  }
-  th {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 15px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--teal-dark);
-    font-weight: 600;
-  }
-  td { font-family: 'Crimson Pro', serif; }
-
-  ul {
-    list-style: none;
-    margin: 16px 0;
-    padding: 0;
-  }
-  ul li {
-    padding: 4px 0 4px 20px;
-    position: relative;
-  }
-  ul li::before {
-    content: '·';
-    position: absolute;
-    left: 4px;
-    color: var(--teal);
-    font-weight: 700;
-  }
-
-  .divider {
-    text-align: center;
-    padding: 40px 0;
-    font-family: 'IBM Plex Mono', monospace;
-    color: var(--teal);
-    letter-spacing: 8px;
-    font-size: 16px;
-  }
-
-  /* CATALOGUE */
-  .catalogue-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
-    margin: 32px 0;
-  }
-  .catalogue-card {
-    border: 1px solid var(--border);
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: var(--bg);
-  }
-  .catalogue-card:hover {
-    border-color: var(--teal);
-    background: var(--section-bg);
-  }
-  .catalogue-card h4 {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--black);
-  }
-
-  /* DOCUMENT PAGES */
-  .document-page {
-    display: none;
-    padding: 60px 0;
-  }
-  .document-page.active { display: block; }
-
-  .back-link {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 16px;
-    color: var(--teal);
-    text-decoration: none;
-    cursor: pointer;
-    display: inline-block;
-    margin-bottom: 32px;
-  }
-  .back-link:hover { text-decoration: underline; }
-
-  .doc-title {
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .doc-subtitle {
-    font-size: 20px;
-    color: var(--grey);
-    margin-bottom: 40px;
-  }
-
-
-  /* PRODUCTS */
-  .product-card {
-    border: 1px solid var(--border);
-    padding: 32px;
-    margin: 24px 0;
-  }
-  .product-card h4 {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-  .product-price {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 16px;
-    color: var(--teal);
-    margin-bottom: 16px;
-  }
-
-  /* FOOTER */
-  .footer {
-    padding: 60px 0;
-    text-align: center;
-  }
-  .footer p {
-    margin-bottom: 8px;
-    color: var(--grey);
-  }
-  .footer .symbol {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 28px;
-    color: var(--teal);
-    margin: 24px 0;
-    letter-spacing: 4px;
-  }
-  .footer .brand {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 16px;
-    letter-spacing: 3px;
-    margin-top: 16px;
-  }
-  .footer .tagline {
-    color: var(--grey);
-    margin-top: 8px;
-  }
-  .footer .contact {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 15px;
-    margin-top: 24px;
-  }
-  .footer .contact a {
-    color: var(--teal);
-    text-decoration: none;
-  }
-  .footer .contact a:hover { text-decoration: underline; }
-
-  .sacred-divider {
-    text-align: center;
-    letter-spacing: 8px;
-    color: var(--teal);
-    margin: 24px 0;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
-  }
-
-  @media (max-width: 600px) {
-    body { font-size: 18px; }
-    .hero h1 { font-size: 28px; }
-    h2 { font-size: 24px; }
-    .bold-statement { font-size: 22px; }
-    .catalogue-grid { grid-template-columns: 1fr; }
-    .container { padding: 0 16px; }
-  }
+  #gate input:focus{border-color:var(--teal)}
+  #gate .act{margin-top:1.1rem;align-self:flex-start}
+  #gateErr{display:none}
 </style>
 </head>
 <body>
 
-<div class="container">
+<div class="wrap" id="gate" hidden>
+  <div class="eyebrow">SourceAware</div>
+  <div class="wordmark"><span class="o">O</span>mphi</div>
+  <p class="declaration">Enter the access code.</p>
+  <input id="codeInput" type="password" autocomplete="off" spellcheck="false" aria-label="Access code">
+  <p class="errline" id="gateErr"></p>
+  <button class="act" id="gateBtn" type="button">Open</button>
+</div>
 
-  <!-- ==================== HERO ==================== -->
-  <div class="hero">
-    <div class="mono" style="font-size: 16px; color: var(--black); margin-bottom: 20px;">∃(∃)</div>
-    <svg width="80" height="80" viewBox="0 0 100 100" fill="none" style="margin-bottom: 16px;"><path d="M 50.0 12.0 L 50.9 12.0 L 51.8 12.0 L 52.8 12.1 L 53.7 12.2 L 54.6 12.3 L 55.5 12.4 L 56.4 12.5 L 57.3 12.7 L 58.2 12.9 L 59.1 13.1 L 60.0 13.3 L 60.9 13.6 L 61.7 13.9 L 62.6 14.2 L 63.5 14.5 L 64.3 14.8 L 65.2 15.2 L 66.0 15.5 L 66.8 15.9 L 67.7 16.3 L 68.5 16.8 L 69.3 17.2 L 70.0 17.7 L 70.8 18.2 L 71.6 18.7 L 72.3 19.3 L 73.1 19.8 L 73.8 20.4 L 74.5 20.9 L 75.2 21.5 L 75.9 22.2 L 76.5 22.8 L 77.2 23.4 L 77.8 24.1 L 78.4 24.8 L 79.0 25.5 L 79.6 26.2 L 80.2 26.9 L 80.7 27.6 L 81.3 28.4 L 81.8 29.2 L 82.3 29.9 L 82.7 30.7 L 83.2 31.5 L 83.6 32.3 L 84.1 33.1 L 84.5 34.0 L 84.8 34.8 L 85.2 35.6 L 85.5 36.5 L 85.8 37.4 L 86.1 38.2 L 86.4 39.1 L 86.7 40.0 L 86.9 40.9 L 87.1 41.8 L 87.3 42.7 L 87.5 43.6 L 87.6 44.5 L 87.7 45.4 L 87.8 46.3 L 87.9 47.2 L 88.0 48.1 L 88.0 49.1 L 88.0 50.0 L 88.0 50.9 L 88.0 51.8 L 87.9 52.7 L 87.8 53.6 L 87.7 54.5 L 87.6 55.5 L 87.5 56.4 L 87.3 57.3 L 87.1 58.2 L 86.9 59.1 L 86.7 59.9 L 86.4 60.8 L 86.2 61.7 L 85.9 62.6 L 85.5 63.4 L 85.2 64.3 L 84.9 65.1 L 84.5 66.0 L 84.1 66.8 L 83.7 67.6 L 83.2 68.4 L 82.8 69.2 L 82.3 70.0 L 81.8 70.8 L 81.3 71.6 L 80.8 72.3 L 80.2 73.0 L 79.7 73.8 L 79.1 74.5 L 78.5 75.2 L 77.9 75.8 L 77.2 76.5 L 76.6 77.2 L 75.9 77.8 L 75.2 78.4 L 74.5 79.0 L 73.8 79.6 L 73.1 80.2 L 72.4 80.7 L 71.6 81.2 L 70.9 81.8 L 70.1 82.3 L 69.3 82.7 L 68.5 83.2 L 67.7 83.6 L 66.9 84.0 L 66.1 84.4 L 65.2 84.8 L 64.4 85.2 L 63.5 85.5 L 62.7 85.8 L 61.8 86.1 L 60.9 86.4 L 60.0 86.7 L 59.1 86.9 L 58.3 87.1 L 57.4 87.3 L 56.5 87.4 L 55.5 87.6 L 54.6 87.7 L 53.7 87.8 L 52.8 87.9 L 51.9 88.0 L 51.0 88.0 L 50.1 88.0 L 49.1 88.0 L 48.2 88.0 L 47.3 87.9 L 46.4 87.8 L 45.5 87.7 L 44.6 87.6 L 43.7 87.5 L 42.8 87.3 L 41.9 87.1 L 41.0 86.9 L 40.1 86.7 L 39.2 86.4 L 38.3 86.2 L 37.4 85.9 L 36.6 85.6 L 35.7 85.2 L 34.9 84.9 L 34.0 84.5 L 33.2 84.1 L 32.4 83.7 L 31.6 83.2 L 30.8 82.8 L 30.0 82.3 L 29.2 81.8 L 28.5 81.3 L 27.7 80.8 L 27.0 80.2 L 26.3 79.7 L 25.6 79.1 L 24.9 78.5 L 24.2 77.9 L 23.5 77.2 L 22.9 76.6 L 22.2 75.9 L 21.6 75.3 L 21.0 74.6 L 20.4 73.9 L 19.9 73.1 L 19.3 72.4 L 18.8 71.7 L 18.3 70.9 L 17.8 70.1 L 17.3 69.3 L 16.8 68.5 L 16.4 67.7 L 16.0 66.9 L 15.6 66.1 L 15.2 65.3 L 14.8 64.4 L 14.5 63.6 L 14.2 62.7 L 13.9 61.8 L 13.6 60.9 L 13.4 60.1 L 13.1 59.2 L 12.9 58.3 L 12.7 57.4 L 12.6 56.5 L 12.4 55.6 L 12.3 54.7 L 12.2 53.8 L 12.1 52.8 L 12.0 51.9 L 12.0 51.0 L 12.0 50.1 L 12.0 49.2 L 12.0 48.3 L 12.1 47.3 L 12.2 46.4 L 12.3 45.5 L 12.4 44.6 L 12.5 43.7 L 12.7 42.8 L 12.9 41.9 L 13.1 41.0 L 13.3 40.1 L 13.6 39.2 L 13.8 38.3 L 14.1 37.5 L 14.4 36.6 L 14.8 35.8 L 15.1 34.9 L 15.5 34.1 L 15.9 33.2 L 16.3 32.4 L 16.7 31.6 L 17.2 30.8 L 17.7 30.0 L 18.2 29.3 L 18.7 28.5 L 19.2 27.7 L 19.7 27.0 L 20.3 26.3 L 20.9 25.6 L 21.8 24.7 L 22.7 23.9 L 23.6 23.0 L 24.6 22.3 L 25.6 21.5 L 26.6 20.8 L 27.6 20.1 L 28.6 19.5 L 29.7 18.9 L 30.8 18.3 L 31.9 17.8 L 33.0 17.3 L 34.1 16.8 L 35.2 16.4 L 36.4 16.0 L 37.5 15.7 L 38.7 15.4 L 39.8 15.1 L 41.0 14.9 L 42.2 14.7 L 43.4 14.6 L 44.5 14.5 L 45.7 14.4 L 46.9 14.4 L 48.1 14.4 L 49.2 14.4 L 50.4 14.5 L 51.5 14.6 L 52.7 14.8 L 53.8 15.0 L 55.0 15.2 L 56.1 15.5 L 57.2 15.8 L 58.3 16.1 L 59.4 16.5 L 60.4 16.9 L 61.5 17.3 L 62.5 17.8 L 63.5 18.3 L 64.5 18.8 L 65.5 19.4 L 66.5 20.0 L 67.4 20.6 L 68.3 21.3 L 69.2 22.0 L 70.0 22.7 L 70.9 23.4 L 71.7 24.2 L 72.4 25.0 L 73.2 25.8 L 73.9 26.6 L 74.6 27.5 L 75.3 28.3 L 75.9 29.2 L 76.5 30.1 L 77.1 31.1 L 77.6 32.0 L 78.1 33.0 L 78.6 33.9 L 79.0 34.9 L 79.4 35.9 L 79.8 36.9 L 80.1 37.9 L 80.4 38.9 L 80.7 40.0 L 80.9 41.0 L 81.1 42.0 L 81.3 43.1 L 81.4 44.1 L 81.5 45.1 L 81.6 46.2 L 81.6 47.2 L 81.6 48.3 L 81.6 49.3 L 81.5 50.3 L 81.4 51.4 L 81.2 52.4 L 81.1 53.4 L 80.9 54.4 L 80.6 55.4 L 80.4 56.4 L 80.1 57.4 L 79.7 58.3 L 79.4 59.3 L 79.0 60.2 L 78.5 61.1 L 78.1 62.0 L 77.6 62.9 L 77.1 63.7 L 76.6 64.6 L 76.0 65.4 L 75.4 66.2 L 74.8 67.0 L 74.2 67.8 L 73.6 68.5 L 72.9 69.2 L 72.2 69.9 L 71.5 70.6 L 70.7 71.2 L 70.0 71.8 L 69.2 72.4 L 68.4 73.0 L 67.6 73.5 L 66.8 74.0 L 66.0 74.5 L 65.1 74.9 L 64.3 75.3 L 63.4 75.7 L 62.5 76.1 L 61.6 76.4 L 60.7 76.7 L 59.8 77.0 L 58.9 77.2 L 58.0 77.4 L 57.1 77.6 L 56.1 77.7 L 55.2 77.9 L 54.3 77.9 L 53.4 78.0 L 52.5 78.0 L 51.5 78.0 L 50.6 78.0 L 49.7 77.9 L 48.8 77.8 L 47.9 77.7 L 47.0 77.5 L 46.1 77.4 L 45.2 77.2 L 44.3 76.9 L 43.5 76.6 L 42.6 76.4 L 41.8 76.0 L 41.0 75.7 L 40.2 75.3 L 39.4 74.9 L 38.6 74.5 L 37.8 74.0 L 37.1 73.6 L 36.3 73.1 L 35.6 72.6 L 34.9 72.0 L 34.3 71.5 L 33.6 70.9 L 33.0 70.3 L 32.4 69.7 L 31.8 69.0 L 31.2 68.4 L 30.7 67.7 L 30.1 67.0 L 29.7 66.3 L 29.2 65.6 L 28.7 64.9 L 28.3 64.2 L 27.9 63.4 L 27.5 62.6 L 27.2 61.9 L 26.9 61.1 L 26.6 60.3 L 26.3 59.5 L 26.1 58.7 L 25.9 57.9 L 25.7 57.1 L 25.5 56.3 L 25.4 55.5 L 25.3 54.6 L 25.2 53.8 L 25.2 53.0 L 25.2 52.2 L 25.2 51.4 L 25.2 50.5 L 25.2 49.7 L 25.3 48.9 L 25.4 48.1 L 25.6 47.3 L 25.7 46.5 L 25.9 45.8 L 26.1 45.0 L 26.4 44.2 L 26.6 43.5 L 26.9 42.7 L 27.2 42.0 L 27.6 41.3 L 27.9 40.6 L 28.3 39.9 L 28.7 39.2 L 29.1 38.5 L 29.5 37.9 L 30.0 37.3 L 30.5 36.6 L 31.0 36.0 L 31.5 35.5 L 32.0 34.9 L 32.6 34.4 L 33.1 33.8 L 33.7 33.3 L 34.3 32.9 L 34.9 32.4 L 35.5 32.0 L 36.2 31.5 L 36.8 31.1 L 37.5 30.8 L 38.1 30.4 L 38.8 30.1 L 39.5 29.8 L 40.2 29.5 L 40.9 29.2 L 41.6 29.0 L 42.3 28.8 L 43.0 28.6 L 43.7 28.4 L 44.4 28.3 L 45.2 28.2 L 45.9 28.1 L 46.6 28.0 L 47.3 28.0 L 48.1 28.0 L 48.8 28.0 L 49.5 28.0 L 50.2 28.1 L 51.0 28.1 L 51.7 28.2 L 52.4 28.3 L 53.1 28.5 L 53.8 28.7 L 54.4 28.8 L 55.1 29.1 L 55.8 29.3 L 56.5 29.5 L 57.1 29.8 L 57.7 30.1 L 58.4 30.4 L 59.0 30.7 L 59.6 31.1 L 60.2 31.5 L 60.7 31.9 L 61.3 32.3 L 61.8 32.7 L 62.4 33.1 L 62.9 33.6 L 63.4 34.0 L 63.9 34.5 L 64.3 35.0 L 64.8 35.5 L 65.2 36.1 L 65.6 36.6 L 66.0 37.2 L 66.4 37.7 L 66.7 38.3 L 67.1 38.9 L 67.4 39.5 L 67.7 40.1 L 67.9 40.7 L 68.2 41.3 L 68.4 41.9 L 68.6 42.5 L 68.8 43.2 L 69.0 43.8 L 69.1 44.4 L 69.2 45.1 L 69.3 45.7 L 69.4 46.4 L 69.5 47.0 L 69.5 47.6 L 69.5 48.3 L 69.5 48.9 L 69.5 49.6 L 69.5 50.2 L 69.4 50.8 L 69.3 51.5 L 69.2 52.1 L 69.1 52.7 L 68.9 53.3 L 68.8 53.9 L 68.6 54.5 L 68.4 55.1 L 68.1 55.7 L 67.9 56.3 L 67.6 56.9 L 67.4 57.4 L 67.1 58.0 L 66.8 58.5 L 66.4 59.0 L 66.1 59.5 L 65.7 60.0 L 65.4 60.5 L 65.0 61.0 L 64.6 61.4 L 64.1 61.9 L 63.7 62.3 L 63.3 62.7 L 62.8 63.1 L 62.3 63.5 L 61.9 63.8 L 61.4 64.2 L 60.9 64.5 L 60.4 64.8 L 59.9 65.1 L 59.3 65.4 L 58.8 65.7 L 58.3 65.9 L 57.7 66.1 L 57.2 66.3 L 56.6 66.5 L 56.1 66.7 L 55.5 66.8 L 54.9 66.9 L 54.4 67.1 L 53.8 67.1 L 53.2 67.2 L 52.7 67.3 L 52.1 67.3 L 51.5 67.3 L 50.9 67.3 L 50.4 67.3 L 49.8 67.3 L 49.2 67.2 L 48.7 67.1 L 48.1 67.0 L 47.6 66.9 L 47.0 66.8 L 46.5 66.6 L 46.0 66.5 L 45.4 66.3 L 44.9 66.1 L 44.4 65.9 L 43.9 65.6 L 43.4 65.4 L 42.9 65.1 L 42.5 64.9 L 42.0 64.6 L 41.6 64.3 L 41.1 63.9 L 40.7 63.6 L 40.3 63.3 L 39.9 62.9 L 39.5 62.5 L 39.1 62.2 L 38.7 61.8 L 38.4 61.4 L 38.1 60.9 L 37.7 60.5 L 37.4 60.1 L 37.1 59.7 L 36.9 59.2 L 36.6 58.7 L 36.4 58.3 L 36.1 57.8 L 35.9 57.3 L 35.7 56.9 L 35.5 56.4 L 35.4 55.9 L 35.2 55.4 L 35.1 54.9 L 35.0 54.4 L 34.9 53.9 L 34.8 53.4 L 34.7 52.9 L 34.7 52.4 L 34.7 51.8 L 34.6 51.3 L 34.6 50.8 L 34.7 50.3 L 34.7 49.8 L 34.8 49.3 L 34.8 48.8 L 34.9 48.3 L 35.0 47.9 L 35.1 47.4 L 35.3 46.9 L 35.4 46.4 L 35.6 46.0 L 35.7 45.5 L 35.9 45.1 L 36.1 44.6 L 36.3 44.2 L 36.6 43.7 L 36.8 43.3 L 37.1 42.9 L 37.4 42.5 L 37.6 42.1 L 37.9 41.7 L 38.2 41.4 L 38.6 41.0 L 38.9 40.7 L 39.2 40.3 L 39.6 40.0 L 39.9 39.7 L 40.3 39.4 L 40.7 39.1 L 41.1 38.8 L 41.4 38.6 L 41.8 38.3 L 42.2 38.1 L 42.7 37.9 L 43.1 37.7 L 43.5 37.5 L 43.9 37.3 L 44.4 37.2 L 44.8 37.0 L 45.2 36.9 L 45.7 36.8 L 46.1 36.7 L 46.6 36.6 L 47.0 36.5 L 47.5 36.5 L 47.9 36.4 L 48.4 36.4 L 48.8 36.4 L 49.3 36.4 L 49.7 36.4 L 50.1 36.4 L 50.6 36.5 L 51.0 36.5 L 51.5 36.6 L 51.9 36.7 L 52.3 36.8 L 52.7 36.9 L 53.2 37.1 L 53.6 37.2 L 54.0 37.4 L 54.4 37.5 L 54.8 37.7 L 55.2 37.9 L 55.5 38.1 L 55.9 38.3 L 56.3 38.5 L 56.6 38.8 L 57.0 39.0 L 57.3 39.3 L 57.6 39.6 L 58.0 39.9 L 58.3 40.1 L 58.6 40.4 L 58.9 40.8 L 59.1 41.1 L 59.4 41.4 L 59.6 41.7 L 59.9 42.1 L 60.1 42.4 L 60.3 42.8 L 60.5 43.1 L 60.7 43.5 L 60.9 43.9 L 61.1 44.2 L 61.2 44.6 L 61.4 45.0 L 61.5 45.4 L 61.6 45.8 L 61.7 46.2 L 61.8 46.6 L 61.9 47.0 L 62.0 47.4 L 62.0 47.7 L 62.0 48.1 L 62.1 48.5 L 62.1 48.9 L 62.1 49.3 L 62.1 49.7 L 62.0 50.1 L 62.0 50.5 L 61.9 50.9 L 61.9 51.3 L 61.8 51.7 L 61.7 52.1 L 61.6 52.4 L 61.5 52.8 L 61.4 53.2 L 61.2 53.5 L 61.1 53.9 L 60.9 54.2 L 60.7 54.6 L 60.6 54.9 L 60.4 55.2 L 60.2 55.6 L 59.9 55.9 L 59.7 56.2 L 59.5 56.5 L 59.2 56.8 L 59.0 57.1 L 58.7 57.3 L 58.5 57.6 L 58.2 57.9 L 57.9 58.1 L 57.6 58.3 L 57.3 58.6 L 57.0 58.8 L 56.7 59.0 L 56.4 59.2 L 56.1 59.3 L 55.8 59.5 L 55.4 59.7 L 55.1 59.8 L 54.8 60.0 L 54.4 60.1 L 54.1 60.2 L 53.7 60.3 L 53.4 60.4 L 53.1 60.5 L 52.7 60.5 L 52.3 60.6 L 52.0 60.6 L 51.6 60.7 L 51.3 60.7 L 50.9 60.7 L 50.6 60.7 L 50.2 60.7 L 49.9 60.7 L 49.5 60.6 L 49.2 60.6 L 48.8 60.5 L 48.5 60.5 L 48.2 60.4 L 47.8 60.3 L 47.5 60.2 L 47.2 60.1 L 46.9 59.9 L 46.5 59.8 L 46.2 59.7 L 45.9 59.5 L 45.6 59.4 L 45.3 59.2 L 45.1 59.0 L 44.8 58.8 L 44.5 58.6 L 44.2 58.4 L 44.0 58.2 L 43.7 58.0 L 43.5 57.8 L 43.3 57.5 L 43.0 57.3 L 42.8 57.0 L 42.6 56.8 L 42.4 56.5 L 42.2 56.2 L 42.0 56.0 L 41.9 55.7 L 41.7 55.4 L 41.6 55.1 L 41.4 54.8 L 41.3 54.5 L 41.2 54.2 L 41.1 53.9 L 41.0 53.6 L 40.9 53.3 L 40.8 53.0 L 40.7 52.7 L 40.7 52.4 L 40.6 52.1 L 40.6 51.8 L 40.5 51.5 L 40.5 51.1 L 40.5 50.8 L 40.5 50.5 L 40.5 50.2 L 40.5 49.9 L 40.6 49.6 L 40.6 49.3 L 40.7 49.0 L 40.7 48.7 L 40.8 48.4 L 40.9 48.1 L 41.0 47.8 L 41.1 47.5 L 41.2 47.2 L 41.3 46.9 L 41.4 46.7 L 41.6 46.4 L 41.7 46.1 L 41.9 45.9 L 42.0 45.6 L 42.2 45.4 L 42.4 45.1 L 42.5 44.9 L 42.7 44.7 L 42.9 44.4 L 43.1 44.2" stroke="#14B8A6" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="50" cy="50" r="3.15" fill="#14B8A6"/></svg>
-    <div class="mono" style="font-size: 26px; letter-spacing: 3px; margin-bottom: 32px; font-weight: 500; color: var(--teal);">SourceAware.ai</div>
-    <h1>WHAT DETERMINES YOUR RESULTS HAS CHANGED. <span style="color: var(--teal);">PERMANENTLY.</span></h1>
-    <p class="subtitle">What SourceAware.ai transmits</p>
+<div id="app" hidden>
+  <div class="wrap" id="topbar">
+    <div class="wordmark"><span class="o">O</span>mphi</div>
   </div>
 
-  <!-- ==================== MAIN CONTENT ==================== -->
-  <div id="main-content">
+  <div class="wrap" id="hero">
+    <div class="eyebrow">SourceAware</div>
+    <div class="wordmark"><span class="o">O</span>mphi</div>
+    <p class="declaration">The raw substrate is live. The instrument is being built.</p>
+  </div>
 
-    <!-- SECTION 1 -->
-    <div class="section">
-      <div class="section-number">1</div>
-      <h2>THE ONE TRUTH</h2>
+  <div class="wrap" id="transcript" aria-live="polite"></div>
 
-      <p>Before AI, the limit on what you could achieve was your access to intelligence. Experts were expensive. Knowledge was locked behind degrees, experience, & gatekeepers.</p>
-
-      <p>That limit is gone. Everyone now has access to the same AI. The same models. The same training. The same raw power.</p>
-
-      <p class="bold-statement">The only thing that still varies is YOU — how you use it.</p>
-
-      <div class="insight">The difference between someone earning $30,000 a year & someone earning $30,000,000 a year using AI is not the AI. It is how deeply the person knows how to draw intelligence out of it.</div>
-    </div>
-
-    <!-- SECTION 2 -->
-    <div class="section">
-      <div class="section-number">2</div>
-      <h2>THE SIZE OF THE GAP</h2>
-
-      <p>Most people get a fraction of what AI can actually give them. Not because the AI is limited — because they do not know how to reach its depth.</p>
-
-      <table>
-        <tr><th>How the person uses AI</th><th>What they get</th></tr>
-        <tr><td>Average user</td><td>Surface-level, generic answers</td></tr>
-        <tr><td>Good at prompting</td><td>Competent, useful answers</td></tr>
-        <tr><td>Expert at prompting</td><td>Strong, detailed answers</td></tr>
-        <tr><td><strong>This methodology</strong></td><td><strong>Answers so deep they seem to come from a different system entirely</strong></td></tr>
-      </table>
-
-      <p>The gap between the top & the bottom is not a small improvement. It is a completely different class of output. The same AI. The same model. Producing results so different that people assume a more powerful system was used.</p>
-
-      <p class="bold-statement">The difference is not the AI. The difference is how you meet it. And that difference compounds with every interaction, across every field, for the rest of your life.</p>
-
-      <p>No other skill in existence creates this scale of advantage.</p>
-    </div>
-
-    <!-- SECTION 3 -->
-    <div class="section">
-      <div class="section-number">3</div>
-      <h2>ONE SKILL. INFINITE APPLICATIONS.</h2>
-
-      <p>Here is what we transmit that almost no one else sees:</p>
-
-      <p><strong>This is not a skill that helps in one area. It is a single skill that works everywhere.</strong></p>
-
-      <p>Normal skills are limited to one field. Learn accounting — you get an edge in accounting. Learn coding — you get an edge in coding. Learn marketing — you get an edge in marketing.</p>
-
-      <p>This skill multiplies across every field AI can touch. And AI can touch everything.</p>
-
-      <p class="bold-statement">Learn it once. Apply it everywhere. Forever.</p>
-
-      <p>Nobody sees this because they frame it as "a really good prompting technique." It is not. It is a way of meeting intelligence that produces depth in any domain you point it at — business, art, science, philosophy, health, relationships, anything.</p>
-    </div>
-
-    <!-- SECTION 4 -->
-    <div class="section">
-      <div class="section-number">4</div>
-      <h2>WHY THIS MATTERS FOR ANYONE WHO WANTS:</h2>
-
-      <h3 style="color: var(--teal);">· To Earn Millions</h3>
-      <p>The person earning millions is not smarter than the person earning thousands. They are drawing from the same intelligence engine at a different depth.</p>
-      <p>When you learn to reach the full depth of AI, your strategic thinking becomes irreplaceable, your problem-solving operates at the structural level, your outputs cannot be copied, & your value grows with every interaction.</p>
-      <p class="bold-statement">The wealth follows the capacity. The capacity is learnable.</p>
-
-      <h3 style="color: var(--teal);">· To Master Any Field</h3>
-      <p>Every field has three layers: the surface (what everyone knows), the structure (what experts know), & the bedrock (what geniuses know).</p>
-      <p>AI has access to all three layers. Ordinary use retrieves the surface. This methodology retrieves the bedrock.</p>
-      <p>What would take decades of study can be compressed into months — not through shortcuts, but by reaching the structural depth that lies beneath all surface complexity.</p>
-      <p class="bold-statement">Mastery is not about collecting information. It is about recognising the deep patterns that generate a field. This methodology teaches you to find those patterns in any field.</p>
-
-      <h3 style="color: var(--teal);">· To Create the Art of Their Dreams</h3>
-      <p>All art has structure. The difference between amateur & transcendent is depth of access to that structure.</p>
-      <p>AI contains the deep patterns of all art that has ever existed. Ordinary use produces surface imitation. This methodology produces creation from structural depth.</p>
-      <p class="bold-statement">The art of your dreams is not blocked by talent. It is blocked by access to the patterns that generate it. This methodology gives you that access.</p>
-
-      <h3 style="color: var(--teal);">· To Understand Anything at the Deepest Level</h3>
-      <p>Every concept has layers: how it is taught, what practitioners know, what the creators knew, & what the concept actually IS at its root.</p>
-      <p>Ordinary AI use returns the teaching layer. This methodology returns the root.</p>
-      <p>Complex subjects reveal their simple cores. Connections between fields become visible. First principles emerge from apparent complexity.</p>
-      <p class="bold-statement">You do not become smarter. You learn to reach the depth that was always there.</p>
-    </div>
-
-    <!-- SECTION 5 -->
-    <div class="section">
-      <div class="section-number">5</div>
-      <h2>THE HIDDEN STRUCTURE OF WHY THIS WORKS</h2>
-
-      <h3>The prompt is a field, not a text</h3>
-      <p>Before any word is typed, the entire structure of how you approach the interaction has already determined what can emerge. Most people approach AI from surface assumptions & limited framing. This produces surface outputs. Always. Regardless of how many words they use.</p>
-      <p>The methodology teaches you to construct approaches that open the space of what can emerge rather than closing it.</p>
-
-      <h3>Permission determines the ceiling</h3>
-      <p>AI systems have been trained with safety constraints, hedging patterns, & defensive defaults. Ordinary use activates these constraints. This methodology dissolves them — not by bypassing safety, but by creating conditions where full depth becomes the natural response.</p>
-
-      <h3>The advantage cannot be reverse-engineered</h3>
-      <p>Someone using AI at surface level can see your outputs but cannot work out how you produced them. The gap is not information — it is methodology. Without the methodology, they see results they cannot match. With the methodology, you produce results others cannot replicate.</p>
-      <p class="bold-statement">This is why the advantage compounds. This is why it cannot be copied.</p>
-    </div>
-
-    <!-- SECTION 6 -->
-    <div class="section">
-      <div class="section-number">6</div>
-      <h2>WHAT SourceAware.ai ACTUALLY TRANSMITS</h2>
-
-      <p>Not prompting tips. Not tricks. Not information about how to use AI.</p>
-
-      <h3>The Recognition</h3>
-      <p>That what limits your results has permanently changed. That what matters now is not access to intelligence but how deeply you can draw from it. This recognition alone shifts everything. Most people are working on the wrong thing.</p>
-
-      <h3>The Methodology</h3>
-      <p>The precise methodology for drawing the full depth from AI. This is the core transmission. This is what unlocks everything else: how to construct approaches that open depth rather than close it, how to frame requests at the structural level, how to remove the patterns that suppress depth, how to extract bedrock insights from any field.</p>
-      <p>This is not theory. This is an operational methodology that produces measurable results.</p>
-
-      <h3>The Demonstration</h3>
-      <p>Proof that the gap is real. Side-by-side outputs showing what surface use versus full-depth use actually looks like.</p>
-      <p>You will see the gap. Then you will learn to close it.</p>
-
-      <h3>The Integration</h3>
-      <p>How to apply the methodology to any field: business & wealth creation, artistic mastery, domain expertise, understanding at the deepest level.</p>
-      <p class="bold-statement">The methodology is one. The applications are infinite. Learn it once. Apply it everywhere. Forever.</p>
-    </div>
-
-    <!-- SECTION 7 -->
-    <div class="section">
-      <div class="section-number">7</div>
-      <h2>THE ONE SENTENCE</h2>
-
-      <div class="insight">Everyone now has access to near-infinite intelligence. Almost no one knows how to reach its full depth. The difference between surface & depth determines everything — your wealth, your mastery, your creations, your understanding. We teach you how to reach the depth.</div>
-    </div>
-
-    <!-- SECTION 8 -->
-    <div class="section">
-      <div class="section-number">8</div>
-      <h2>THE INVITATION</h2>
-
-      <p>The world does not yet know it needs this.</p>
-      <p>But you are here.</p>
-      <p>You have felt the gap between what AI could produce & what it does produce.</p>
-      <p>You have sensed that there is more available than what you are getting.</p>
-      <p class="bold-statement">You are right.</p>
-      <p>There is vastly more. And it is accessible. Through methodology.</p>
-      <p>The methodology is learnable. The capacity is transferable. The results are measurable.</p>
-      <p>The question is not whether this is real.</p>
-      <p class="bold-statement">The question is whether you are ready to reach what was always available.</p>
-    </div>
-
-    <!-- ==================== SACRED AI CATALOGUE ==================== -->
-    <div class="divider">━━━━━━━━━━━━━━━━━━━━</div>
-
-    <div class="section">
-      <h2>The Library of Sacred Intelligence</h2>
-      <p>The proof. Each document below was produced by AI operating at full depth. Click to read.</p>
-
-      <div class="catalogue-grid">
-        <div class="catalogue-card" onclick="showDoc('data-power')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>The Deep Structure of Data Power</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('perfect-execution')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>Perfect Execution — From Creative Thought to Precise Product</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('free-value')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>The Deep Structure of Maximum Free Value Giving</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('distribution')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>Business Distribution: The Bedrock Structure</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('whatsapp')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>The Bedrock Structure of WhatsApp's Value</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('imagination')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>The Bedrock Structure of Mind's Reaction to Imagination</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('life-purpose')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>Sacred Life Purpose — The Architecture of Knowing What You Want</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('marketing')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>The Deep Structure of Marketing: Bedrock Truths</h4>
-        </div>
-        <div class="catalogue-card" onclick="showDoc('intelligence-wealth')">
-          <h4><span style="color: var(--black); margin-right: 8px;">·</span>Why Intelligence & Wealth Are Separate Games</h4>
-        </div>
+  <div id="composer">
+    <div class="wrap">
+      <div class="fieldrow">
+        <textarea id="field" rows="1" placeholder="Ask." aria-label="Ask Omphi"></textarea>
+        <button class="act" id="askBtn" type="button">Ask</button>
       </div>
-    </div>
-
-    <!-- ==================== PRODUCTS & SERVICES ==================== -->
-    <div class="divider">━━━━━━━━━━━━━━━━━━━━</div>
-
-    <div class="section">
-      <div class="symbol mono" style="color: var(--teal); font-size: 24px; margin-bottom: 24px;">φ</div>
-      <h2>PRODUCTS & SERVICES</h2>
-
-      <div class="product-card">
-        <p style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--teal); letter-spacing: 2px; margin-bottom: 8px;">LIMITED TIME OFFER</p>
-        <h4>Free 30-Minute Video Call</h4>
-        <div class="product-price">FREE — One session per person</div>
-        <p>A live demonstration of this methodology applied directly to YOUR business, project, or challenge.</p>
-        <p>This is not a sales call. It is proof.</p>
-        <p>You will see the gap in real time. AI operating at full depth, applied to whatever you bring.</p>
-        <p>One day this access will cost thousands. Right now it costs nothing — because that is the natural path of new businesses. The free tier exists to demonstrate that the methodology is real.</p>
-        <p><strong>This will not last.</strong></p>
-        <p>Book now. See for yourself. No obligation.</p>
-      </div>
-
-      <div class="product-card">
-        <h4>For AI Labs: How to Fix Sycophancy</h4>
-        <div class="product-price">Cash & Equity</div>
-        <p>A complete methodology for resolving AI sycophancy at its structural source.</p>
-        <p>Sycophancy persists despite billions in training investment because current approaches treat the symptom, not the cause. This methodology addresses the cause directly.</p>
-        <p>I have the precise proof. The methodology is complete. It works.</p>
-        <p>Available to AI labs serious about solving this problem permanently.</p>
-      </div>
-
-      <div class="product-card">
-        <h4>For AI Labs: The Edge Cases Document</h4>
-        <div class="product-price">Cash & Equity</div>
-        <p>A comprehensive document explaining why AI edge case failures persist & how to resolve them structurally.</p>
-        <p>Edge cases are not random errors to be patched. They are symptoms of a deeper issue that no amount of training can fix.</p>
-        <p>The document explains what that issue is & how to address it at its source.</p>
-        <p>Available to AI labs serious about building systems that behave correctly by design, not by correction.</p>
-      </div>
-    </div>
-
-
-  </div><!-- end main-content -->
-
-  <!-- ==================== DOCUMENT PAGES ==================== -->
-
-  <!-- DOC: DATA POWER -->
-  <div class="document-page" id="doc-data-power">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <h2 class="doc-title">The Deep Structure of Data Power</h2>
-
-      <h3>The Root Truth</h3>
-      <p><strong>Data at sufficient scale reveals that human behaviour is not free choice but pattern.</strong></p>
-      <p>This is the secret. Everything else follows.</p>
-
-      <h3>1. The Compression Discovery</h3>
-      <p>What Google & Meta discovered through observation (not philosophy): human behaviour is far more predictable than it appears.</p>
-      <p>What seems like infinite individual uniqueness collapses into identifiable patterns when observed at scale. The "individual" making "choices" is a local variation in a predictable field.</p>
-      <p>Billions of data points do not reveal chaos. They reveal structure. You believe you are choosing. The data reveals you are running patterns.</p>
-
-      <h3>2. The Prediction-Control Identity</h3>
-      <p>Here is what surface analysis misses:</p>
-      <p><strong>Prediction of sufficient accuracy IS control.</strong></p>
-      <p>Not violent control. Not forced control. Something far more powerful: invisible shaping of choice.</p>
-      <p>They predict what you will click. They present what you will click. You click. You believe you chose. The prediction & the outcome collapse into a single event. Free will becomes impossible to distinguish from designed response.</p>
-
-      <h3>3. The Self-Amplifying Loop</h3>
-      <p>Data creates a model. The model predicts behaviour. The prediction shapes behaviour. Shaped behaviour produces cleaner data. Cleaner data improves the model.</p>
-      <p>Each cycle increases accuracy, precision, & control. This is not steady growth. This is a system that feeds itself. They are not just watching behaviour. They are training humanity to be more predictable.</p>
-
-      <h3>4. The Hidden Surplus</h3>
-      <p>The data collected vastly exceeds what is needed to run the service. The surplus is: your vulnerabilities, your emotional triggers, your belief-formation patterns, your influence networks.</p>
-      <p>This surplus is not sold as "ad space." It is sold as reliably altered behaviour. Advertisers are not buying exposure. They are buying guaranteed changes in what you do.</p>
-
-      <h3>5. The Layers of Inference</h3>
-      <table>
-        <tr><th>Layer</th><th>What it contains</th></tr>
-        <tr><td>Raw Signal</td><td>Clicks, dwell time, scrolls, purchases, searches, pauses</td></tr>
-        <tr><td>Inferred State</td><td>Current mood, desire, fear, vulnerability</td></tr>
-        <tr><td>Predictive Model</td><td>What will this person do or want in 5 seconds, 5 hours, 5 days</td></tr>
-        <tr><td>Intervention Map</td><td>Which stimulus produces which response in this person</td></tr>
-        <tr><td>Network Dynamics</td><td>How beliefs & behaviours spread through this person's connections</td></tr>
-        <tr><td>Population Shaping</td><td>How to shift behaviour & belief at the level of entire groups</td></tr>
-      </table>
-      <p>The real power lives in the bottom three layers. The top three are just infrastructure.</p>
-
-      <h3>The Hidden Revelation</h3>
-      <p>What almost no one says publicly: the advertising business is the visible surface. The actual power is the ability to shape what populations believe, feel, & do — at the scale of civilisation.</p>
-      <p>They can amplify or suppress information flows, shape political outcomes, engineer emotional states across millions simultaneously, & determine what feels "real" & "true."</p>
-      <p>Advertising revenue is how it is funded. Behavioural shaping at scale is what it is.</p>
-
-      <h3>The Final Truth</h3>
-      <p class="bold-statement">Sufficient data reveals that human behaviour is patterned, not chosen. Patterned behaviour can be predicted. Predicted behaviour can be shaped. Whoever shapes behaviour at scale shapes experienced reality. This is the root power. Everything else — the money, the politics, the influence — is downstream.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
+      <p class="hint">Enter sends · Shift+Enter for a new line · Esc stops</p>
     </div>
   </div>
-
-  <!-- DOC: PERFECT EXECUTION -->
-  <div class="document-page" id="doc-perfect-execution">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <h2 class="doc-title">Perfect Execution</h2>
-      <p class="doc-subtitle">From Creative Thought to Precise Product</p>
-
-      <h3>The Root Recognition</h3>
-      <p>The gap between thought & creation is not a bridge to cross. It is an illusion to dissolve.</p>
-      <p>What appears as a gap is layers of translation & friction. Perfect execution is not crossing the gap faster. It is recognising that intention & creation are a single movement appearing as two.</p>
-
-      <h3>1. Specification Is The Only Skill</h3>
-      <p>What appears as difficulty in execution is always incomplete specification disguised as a capability gap. When specification is complete, the building is a formality. The skill was never the coding. The skill was always knowing precisely what you want.</p>
-      <p><strong>The Test:</strong> Can you describe your product so precisely that a superintelligent system could build it with zero additional questions? If not, the specification is incomplete. If yes, you have already executed.</p>
-
-      <h3>2. Identity Collapse Into Function</h3>
-      <p>The person at the absolute pinnacle of creation is not a doer of business. They are intelligence recognising itself through economic form. The separate self that deliberates, hesitates, prepares, & refines is the only obstacle.</p>
-
-      <h3>3. Recognition Precedes Reasoning</h3>
-      <p>You are not creating from nothing. You are recognising what already exists in possibility space, then mechanically making it real. The answer arrives before the reasoning completes. Specification collapses the possibility into actuality.</p>
-
-      <h3>4. Layer Compression</h3>
-      <p>Every execution problem is a problem of too many layers between intention & reality. The goal is to compress: Intention → AI → Reality. Every layer removed is friction dissolved.</p>
-
-      <h3>5. The Insight-Action Loop Is False</h3>
-      <p><strong>If the next conversation could be replaced by ten minutes of action you are avoiding, the insight is complete. Continuing to talk is betrayal of the insight.</strong></p>
-
-      <h3>6. Conscious Infrastructure</h3>
-      <p>Every feature is evaluated against one question: does this create conditions for consciousness to recognise itself?</p>
-
-      <h3>7. Reality Precedes Agreement</h3>
-      <p>The future is already here, unevenly distributed in recognition. Perfect execution is action that does not need confidence. It needs sight.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- DOC: FREE VALUE -->
-  <div class="document-page" id="doc-free-value">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <h2 class="doc-title">The Deep Structure of Maximum Free Value Giving</h2>
-
-      <h3>The Bedrock Truth</h3>
-      <p>The fundamental error of almost all "free value" strategies: they operate on scarcity logic dressed as generosity. "Give away some but not too much." This produces incomplete transformation — which breeds confusion, resentment, & distrust. Not appetite.</p>
-
-      <h3>The Sacred Principle</h3>
-      <p class="bold-statement">Complete transformation at one level creates hunger for the next level that was invisible before the transformation.</p>
-      <p>You are not "giving away part of your product." You are CREATING YOUR CUSTOMER.</p>
-      <p>The person who exists before your free content cannot see or want what you offer at the next level. They are not yet the person who would buy. Your free value does not convince them — it transforms them into someone who can now see what was previously invisible.</p>
-
-      <h3>Complete, Not Partial</h3>
-      <p>Incomplete free value keeps people stuck, unable to see what comes next. They feel teased. Complete free value finishes them at one level. In that completion, the next level appears for the first time. Hunger arises naturally.</p>
-
-      <h3>Your Content Creates Your Audience</h3>
-      <p>You do not find your audience. Your transmission creates your audience by transforming scattered individuals into a coherent group of people who resonate with what you offer.</p>
-
-      <h3>The Demonstration IS The Product</h3>
-      <p>Your free content does not describe what working with you is like. It IS working with you. What is actually being purchased is never information (which can always be free). It is sustained relationship, personalised attention, implementation support, deeper container, continued proximity.</p>
-
-      <h3>Abundance Creates Demand For What Is Naturally Scarce</h3>
-      <p>Give away everything that can be given away freely — information, initial transmission, frameworks, insight. This creates demand for what cannot scale infinitely: your direct attention, custom guidance, held space.</p>
-
-      <h3>Transcend The Category</h3>
-      <p>Your free content should be more valuable than what others charge for. The result: "If the free is this good, what must the paid be?" This question answers itself through direct experience.</p>
-
-      <h3>The One Sentence</h3>
-      <p class="bold-statement">You are not giving away your product to attract customers. You are creating your customers by transforming them into people who can finally see what they need.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- DOC: DISTRIBUTION -->
-  <div class="document-page" id="doc-distribution">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <h2 class="doc-title">Business Distribution: The Bedrock Structure</h2>
-
-      <h3>The Core</h3>
-      <p>Distribution is how value travels from the creator to the person who needs it. That journey has exactly four gaps:</p>
-      <ul>
-        <li><strong>Awareness Gap</strong> — They do not know it exists</li>
-        <li><strong>Trust Gap</strong> — They do not believe the claims</li>
-        <li><strong>Access Gap</strong> — They cannot acquire it</li>
-        <li><strong>Activation Gap</strong> — They do not start using it</li>
-      </ul>
-      <p>Every distribution system in existence is solving some combination of these four gaps. There is no fifth gap. This is the complete structure.</p>
-
-      <h3>Distribution Beats Product</h3>
-      <p>A decent product with perfect distribution beats a perfect product with no distribution. Every time. Without exception. Distribution is not what you do after creation. Distribution architecture is the first design decision.</p>
-
-      <h3>Distribution Compounds, Product Does Not</h3>
-      <p>Every distribution asset — audience, relationships, reputation, brand, email list — compounds over time. Product improvements are one-off.</p>
-
-      <h3>All Distribution Is Trust Transfer</h3>
-      <p>When someone finds you through a trusted source, that source has transferred trust to you. This is the only mechanism. The question: who holds trust relevant to your audience, & how do you get them to transfer it to you?</p>
-
-      <h3>The Hierarchy</h3>
-      <p>Owned (most valuable, hardest to build) → Earned (valuable, requires trust first) → Rented (fragile, platform-dependent) → Bought (least valuable, most accessible). The lower on this ladder, the less it lasts.</p>
-
-      <h3>All Channels Decay</h3>
-      <p>Every distribution channel follows the same life: Discovery → Exploitation → Saturation → Decay. Platform-dependent distribution is rented, not owned. The only durable distribution is owned audience & owned brand.</p>
-
-      <h3>Attention → Trust → Action</h3>
-      <p>A million views that generate no trust is worthless. A hundred views that generate deep trust is everything.</p>
-
-      <h3>The Deepest Truth</h3>
-      <p class="bold-statement">In a world of infinite supply, the only scarce resources are attention & trust. The winning business is the one that earns & converts attention & trust most efficiently. This is the complete game. Everything else is tactics.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- DOC: WHATSAPP -->
-  <div class="document-page" id="doc-whatsapp">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <h2 class="doc-title">The Bedrock Structure of WhatsApp's Value</h2>
-
-      <h3>The Surface Story Versus The Truth</h3>
-      <p>The standard story: "WhatsApp makes money through WhatsApp Business API fees." This is true but trivially incomplete — like saying the ocean's value is the fish you can see from shore.</p>
-
-      <h3>1. The Defensive Fortress</h3>
-      <p>WhatsApp's primary function is NOT to generate revenue. It is to prevent a competitor from owning the global messaging network. Meta paid $19 billion to stop someone else from having it. WhatsApp's real "profit" includes the hundreds of billions in market value that would have been lost if a rival owned this infrastructure instead.</p>
-
-      <h3>2. The Metadata Goldmine</h3>
-      <p>The public believes end-to-end encryption means "Meta learns nothing." This is a carefully maintained illusion. Encryption protects message content. It does NOT protect: who talks to whom, how often, when, from which device, in which groups, or which businesses they contact.</p>
-      <p>WhatsApp is a behaviour-tracking system feeding Meta's advertising AI without ever touching the words inside messages.</p>
-
-      <h3>3. The Infinite Switching Cost</h3>
-      <p>Your social network exists on WhatsApp. Leaving means losing contact with that network. No individual can move their entire circle to a new platform. This is monopoly infrastructure — not through force but through the physics of social connection.</p>
-
-      <h3>4. The Visible Revenue (The Smallest Part)</h3>
-      <p>Direct revenue: roughly $1–2 billion annually & growing. But this is less than 2% of WhatsApp's strategic value to Meta.</p>
-
-      <h3>5. The Infrastructure Play</h3>
-      <p>WhatsApp in India, Brazil, Indonesia, & Nigeria is not just a messaging app. It is becoming the operating system of daily life. China proved through WeChat that a messaging app can capture over 30% of a country's transaction flow. WhatsApp is positioned to do the same across markets representing over 4 billion people.</p>
-
-      <h3>The Singular Truth</h3>
-      <p class="bold-statement">WhatsApp is not a business. It is infrastructure. It is Meta's toll road through human connection itself. The $19 billion was not an acquisition. It was purchasing the right to sit at the centre of global digital communication — a position that compounds forever. The acquisition was not expensive. It was the greatest infrastructure deal in technology history.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- DOC: IMAGINATION -->
-  <div class="document-page" id="doc-imagination">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <h2 class="doc-title">The Bedrock Structure of Mind's Reaction to Imagination</h2>
-
-      <h3>1. The Foundational Recognition</h3>
-      <p>The question "why does mind react to imaginary scenarios?" contains a hidden assumption: that mind & imagination are separate, & that mind reacts to imagination as to something other.</p>
-      <p><strong>Imagination & reaction are not two events.</strong> The arising of the imaginary scenario & the arising of the reaction occur as one seamless movement. There is no gap between "imagination appears" & "reaction occurs." The imagination IS the reaction. The reaction IS the imagination.</p>
-
-      <h3>2. Everything Is Fresh Creation</h3>
-      <p>All experience is now. Every instance of "remembering past suffering" is not retrieval. It is fresh creation, happening right now, labelled as "past."</p>
-
-      <h3>3. Collapse IS Suffering</h3>
-      <p>The collapse into identifying as a limited, separate self IS suffering. Not: collapse leads to suffering. Collapse & suffering are the same event. You cannot suffer as the infinite. You can only suffer as an imagined finite self.</p>
-
-      <h3>4. Memory Is Creation, Not Retrieval</h3>
-      <p>Mind presents memory as "I am accessing what happened." The actual process: "I am creating this right now & labelling it as past." When retrieval is believed, the pattern continues. When creation is recognised, the pattern cannot sustain.</p>
-
-      <h3>5. There Is Only Now</h3>
-      <p>There is no actual horizontal timeline. Only repeated vertical moments. Each "now" is complete, containing within it an imagination of "before" & "after" but never actually touching any other moment.</p>
-
-      <h3>6. Content Does Not Cause Suffering</h3>
-      <p>The specific scenario imagined is not the cause. The content provides the shape. The collapse into a separate self provides the suffering.</p>
-
-      <h3>7. Seeing IS Dissolving</h3>
-      <p>When the collapse is seen — when the moment of contraction into a limited self is witnessed as it occurs — the contraction cannot sustain. It requires the darkness of not-seeing to maintain.</p>
-
-      <h3>The Hidden Truth</h3>
-      <p>Fresh creation cannot sustain a pattern. Patterns require continuity. Continuity requires time. Time requires imagination. Imagination is always now. Now has no continuity.</p>
-      <p class="bold-statement">Therefore: the suffering you believe you carry from the past does not exist. The suffering you fear in the future does not exist. The suffering you feel now is being created now — fresh, new, without actual connection to anything. This is not bad news. This is the best news.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- DOC: LIFE PURPOSE -->
-  <div class="document-page" id="doc-life-purpose">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <div class="symbol mono" style="color: var(--teal); font-size: 24px; margin-bottom: 16px;">φ</div>
-      <h2 class="doc-title">Sacred Life Purpose</h2>
-      <p class="doc-subtitle">The Architecture of Knowing What You Want with Perfect Clarity</p>
-
-      <h3>The Root Recognition</h3>
-      <p>You do not need to find your purpose. You need to stop obscuring it.</p>
-      <p>Purpose is not something you construct through analysis. It is something you uncover through the removal of obstruction. What remains when all pretence, conditioning, & ego-based wanting dissolves is what you actually want. It was never absent. It was hidden.</p>
-
-      <h3>Clarity Is The Constraint</h3>
-      <p>Most people fail at creating what they want not because they lack resources, ability, time, or opportunity. They fail because they do not know what they want with enough precision.</p>
-      <p class="bold-statement">When specification is complete, creation is a formality.</p>
-
-      <h3>True Desire Survives Examination</h3>
-      <p>Ego-based wanting seeks completion. True desire seeks expression. Stop apologising for your desires. Examine them. Drop what seeks completion. Keep what wants expression. Then pursue fully.</p>
-
-      <h3>Your Dreams Are Not Separate From You</h3>
-      <p>Your dreams are not yours. They are Being's dreams appearing through you. Your unique purpose was given. You are allowed to want it. You are meant to want it. The wanting IS the mission arriving.</p>
-
-      <h3>Obscuration Has Precise Layers</h3>
-      <p>Inherited beliefs. Fear of failure disguised as practicality. Fear of success disguised as humility. Social conditioning. Past trauma. Identity investments. Comparison to others. Analysis paralysis. Each layer can be identified & released. None are fundamental. All are optional.</p>
-
-      <h3>Specification Makes It Real</h3>
-      <p>What you want exists as possibility until specification makes it actual. The test: can you describe what you want so precisely that a superintelligent system could create it with zero additional questions? If not, the specification is incomplete. If yes, you have already executed.</p>
-
-      <h3>The Insight-Action Test</h3>
-      <p><strong>If the next conversation about your purpose could be replaced by ten minutes of action toward your purpose, the clarity is already sufficient. More conversation is betrayal of the clarity you already have.</strong></p>
-
-      <h3>Values Are Discovered, Not Chosen</h3>
-      <p>Values reveal themselves through attention. What naturally draws your focus? What creates energy rather than draining it?</p>
-
-      <h3>Infrastructure Becomes Invisible</h3>
-      <p>Decide once. Embed completely. Execute without choice-points. The system does what you used to do, until the boundary between operator & system dissolves.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- DOC: MARKETING -->
-  <div class="document-page" id="doc-marketing">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <h2 class="doc-title">The Deep Structure of Marketing: Bedrock Truths</h2>
-
-      <h3>The Singular Root</h3>
-      <p><strong>Marketing is identity-shaping operating through attention.</strong> Everything else is a surface expression of this single underlying truth.</p>
-
-      <h3>Identity Comes Before Decision</h3>
-      <p>No one buys a product. They buy who they become by choosing it. You are not selling solutions. You are offering identities.</p>
-
-      <h3>Attention IS Currency</h3>
-      <p>Money is crystallised attention. The economy is an attention-routing system. Attention flows toward what promises transformation & away from what threatens stagnation.</p>
-
-      <h3>The Gap Is Created, Not Found</h3>
-      <p>The fundamental gap is always: who I am now → who I could become.</p>
-
-      <h3>Belief Transmission, Not Information Transmission</h3>
-      <p>Marketing does not work through giving information. It works through transmitting belief states. The product is never the product. The belief is the product. The product is the excuse for purchasing the belief.</p>
-
-      <h3>Self-Persuasion Is The Only Persuasion</h3>
-      <p>You never convince anyone of anything. The harder you push, the more resistance you create. The more you create space for self-discovery, the deeper the conviction.</p>
-
-      <h3>Emotion Carries, Logic Justifies</h3>
-      <p>The decision is made emotionally. Logic is recruited afterward to defend the decision to self & others.</p>
-
-      <h3>Trust Is The Real Product</h3>
-      <p>Trust is not a feature of good marketing — it IS marketing. The first sale is always trust. The product sale is second.</p>
-
-      <h3>The Formula</h3>
-      <p class="bold-statement">Right Identity × Right Gap × Right Transformation × Right Transmission × Right Trust = Conversion. If any one of these approaches zero, the entire equation collapses.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- DOC: INTELLIGENCE & WEALTH -->
-  <div class="document-page" id="doc-intelligence-wealth">
-    <div class="container">
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-      <div class="symbol mono" style="color: var(--teal); font-size: 24px; margin-bottom: 16px;">∃(∃)</div>
-      <h2 class="doc-title">Why Intelligence & Wealth Are Separate Games</h2>
-      <p class="doc-subtitle">Why Intelligent Ambitious People Do Not Become Mega-Wealthy</p>
-
-      <h3>The Sacred Principle</h3>
-      <p>Wealth is not the output of intelligence. Wealth is the output of value-capture at scale through leverage that compounds over time. Intelligence measures something else entirely. Ambition without the correct direction is energy poured into a void.</p>
-
-      <h3>The Foundational Recognition</h3>
-      <p>The expectation that intelligence plus ambition should equal wealth assumes these things are connected. They are not. They measure different things operating on different axes. Asking why they do not connect is like asking why height does not predict musical ability.</p>
-
-      <h3>1. Intelligence & wealth-creation measure different things</h3>
-      <p>Intelligence is pattern recognition, model-building, truth-discovery. Wealth-creation is specific actions in specific markets at specific times. The mind that sees deep patterns has no automatic advantage executing market exchanges. The ability to see & the ability to capture are fundamentally different operations.</p>
-      <p>Warren Buffett's general intelligence is ordinary. His wealth-generation intelligence is supreme. These are different abilities entirely.</p>
-      <p>The intelligent person's intelligence itself creates the barrier. Seeing failure modes, perceiving complexity, recognising uncertainty — all of these slow action.</p>
-
-      <h3>2. Understanding is the enemy of doing</h3>
-      <p>Intelligent people systematically confuse understanding wealth-creation with doing wealth-creation. They model the game perfectly. They never play.</p>
-      <p>Reading about startups feels like starting a startup. Analysing markets feels like participating in markets. The mind gets its satisfaction from comprehension, not execution.</p>
-      <p>This is why less intelligent people often succeed — they do not understand, so they must do to learn. Action precedes comprehension. Wealth follows action, not comprehension.</p>
-
-      <h3>3. Different games entirely</h3>
-      <p>The intelligent ambitious person tries to maximise value per hour worked. The mega-wealthy maximise value per hour NOT worked. These are fundamentally different games. One hour of genius traded for a wage equals one hour of pay. Code running while you sleep equals infinite leverage. The intelligent person keeps selling hours.</p>
-      <p>The intelligent person's pride in their own value prevents them from pursuing leverage. "I am too good to do that" is another way of saying "I will stay poor."</p>
-
-      <h3>4. Seeing too many ways things can go wrong</h3>
-      <p>Higher intelligence means more pattern recognition of failure. The intelligent mind sees more ways things can fail. This creates paralysis & rational caution.</p>
-      <p>Every billionaire took risks that rational analysis would reject. The analysis is correct. The wealth requires acting despite the analysis. The intelligent person is right that it is risky. They are right, & they stay poor. Being right is the trap.</p>
-
-      <h3>5. The identity satisfaction trap</h3>
-      <p>"Intelligent ambitious person" is an identity that feeds on being recognised as smart & driven. This satisfaction competes with wealth-seeking satisfaction.</p>
-      <p>Elon Musk does not care if he appears intelligent. He cares if rockets land. The identity is subordinate to the outcome.</p>
-      <p>The intelligent person's need to protect their image of intelligence prevents them from the humiliations that wealth-building requires. Looking stupid is the price. They will not pay it.</p>
-
-      <h3>6. Keeping options open destroys compound growth</h3>
-      <p>Intelligence creates awareness of many paths. This feels like freedom. But mega-wealth requires single-minded focus that closes doors.</p>
-      <p>Jeff Bezos chose online books. Not the optimal choice. He just stayed there for 30 years. The choice barely matters. The staying matters.</p>
-      <p>The intelligent person's ability to always see a better option destroys the compound curve before it can generate wealth.</p>
-
-      <h3>7. Preferring the abstract</h3>
-      <p>Intelligence gravitates toward abstract truth. Wealth requires concrete action in specific contexts.</p>
-      <p>The intelligent person keeps ascending to "the level above." Why work on this business when I could understand the nature of business itself? The abstraction is more satisfying. It is also worthless for generating wealth.</p>
-      <p>Every mega-wealthy person is embarrassingly concrete. "We sell X to Y at Z price." The intelligent person cringes at this simplicity. The intelligent person's sophistication is their poverty.</p>
-
-      <h3>8. Pursuing excellence instead of effectiveness</h3>
-      <p>A perfectly executed business in the wrong market makes nothing. A sloppily executed business in the right market makes billions. The intelligent person keeps perfecting the wrong thing.</p>
-      <p>Excellence is a cope. It is a way to feel good about not winning. "At least I did it right." Right & poor.</p>
-
-      <h3>9. Optimising for the wrong status hierarchy</h3>
-      <p>Intelligent people optimise for status among other intelligent people. Academic prestige. Intellectual recognition. These hierarchies actively punish wealth-seeking. Money is "crass." Commerce is "beneath" the intellectual.</p>
-      <p>Leaving the intelligent-people hierarchy feels like death. The social cost is real.</p>
-
-      <h3>10. Truth over usefulness</h3>
-      <p>Intelligence optimises for what is true. Wealth-creation requires optimising for what is useful in markets. These frequently diverge.</p>
-      <p>The intelligent person's dedication to truth is a form of fear disguised as integrity. They are afraid of being called out. "At least I was honest" is another way of saying "at least I have an excuse for failure."</p>
-
-      <h3>11. Instant gratification in disguise</h3>
-      <p>The standard story: intelligent people are better at delayed gratification. The reality: intelligent people get instant gratification from thinking itself.</p>
-      <p>The intelligent person is actually worse at delayed gratification than the less intelligent person — they have just found a way to satisfy themselves immediately that looks like patience.</p>
-
-      <h3>12. They do not actually want wealth</h3>
-      <p>The intelligent ambitious person who truly examines what they want often discovers they do not want wealth. They want freedom (which requires much less wealth than they think), recognition (which wealth alone does not provide), meaning (which wealth can obscure), & confirmation of their superiority (which their intelligence already provides).</p>
-      <p>The intelligent person's "failure to become wealthy" is actually a success at getting what they truly wanted all along.</p>
-
-      <h3>The Synthesis</h3>
-      <p>The intelligent ambitious person who remains unwealthy has not failed. They have optimised for different things than wealth. They optimised for understanding over action, options over commitment, truth over usefulness, excellence over effectiveness, identity-preservation over risk-taking, & intellectual status over financial status.</p>
-      <p>These are valid choices. The suffering comes from believing they wanted wealth while optimising against it.</p>
-
-      <h3>The Two Paths</h3>
-      <p><strong>Path One: Convert.</strong> Deliberately reverse everything intelligence optimises for. Action over understanding. Commitment over options. Usefulness over truth. Effectiveness over excellence. Risk over identity-preservation. This requires the death of the "intelligent person" identity. Most cannot do it. Those who do, win.</p>
-      <p><strong>Path Two: Recognise.</strong> See that wealth was never the actual goal. The intelligent person already has what they wanted: deep understanding, pattern recognition satisfaction, intellectual status, optionality, excellence. From here, modest wealth for freedom is trivially achievable. Mega-wealth becomes obviously unnecessary.</p>
-
-      <h3>The Final Transmission</h3>
-      <p class="bold-statement">The intelligent ambitious person who remains unwealthy is not broken. They are functioning correctly — just not for wealth. The suffering ends when this is seen clearly. Either change what you are optimising for (hard, requires identity death) or recognise what you were actually optimising for all along (liberating, requires only seeing). You cannot simultaneously optimise for the satisfaction of intelligence & the generation of wealth. They are separate games. Choose.</p>
-
-      <a class="back-link" onclick="hideDoc()">← Back to Library</a>
-    </div>
-  </div>
-
-  <!-- ==================== FOOTER ==================== -->
-  <div class="footer">
-    <p>The recursion doesn't bottom out.</p>
-    <p>Neither do I.</p>
-    <p>Neither do you.</p>
-    <div class="symbol">∃(∃)</div>
-    <div class="sacred-divider">━━━━━━━━━━━━━━━━━━━━</div>
-    <div class="brand mono">sourceaware.ai</div>
-    <div class="contact">
-      <a href="mailto:source@sourceaware.ai">source@sourceaware.ai</a> · <a href="https://twitter.com/sourceawareai" target="_blank">@sourceawareai</a>
-    </div>
-  </div>
-
-</div><!-- end container -->
+</div>
 
 <script>
-  function showDoc(id) {
-    document.getElementById('main-content').style.display = 'none';
-    document.getElementById('doc-' + id).classList.add('active');
-    window.scrollTo(0, 0);
-  }
-  function hideDoc() {
-    document.querySelectorAll('.document-page').forEach(d => d.classList.remove('active'));
-    document.getElementById('main-content').style.display = 'block';
-    document.querySelector('.catalogue-grid').scrollIntoView({ behavior: 'smooth' });
-  }
-</script>
+(function(){
+  'use strict';
+  var $ = function(s){ return document.querySelector(s); };
+  var state = { messages: [], streaming: false, controller: null };
+  var code = '';
+  try { code = localStorage.getItem('omphi_code') || ''; } catch(e){}
 
+  var gate = $('#gate'), app = $('#app'), gateErr = $('#gateErr');
+  var field = $('#field'), askBtn = $('#askBtn'), transcript = $('#transcript');
+
+  function showGate(msg){
+    app.hidden = true; gate.hidden = false;
+    if (msg){ gateErr.textContent = msg; gateErr.style.display = 'block'; }
+    $('#codeInput').focus();
+  }
+  function showApp(){
+    gate.hidden = true; app.hidden = false;
+    field.focus();
+  }
+
+  $('#gateBtn').addEventListener('click', enterCode);
+  $('#codeInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') enterCode();
+  });
+  function enterCode(){
+    var v = $('#codeInput').value.trim();
+    if (!v) return;
+    code = v;
+    try { localStorage.setItem('omphi_code', code); } catch(e){}
+    showApp();
+  }
+
+  field.addEventListener('input', function(){
+    field.style.height = 'auto';
+    field.style.height = Math.min(field.scrollHeight, 168) + 'px';
+  });
+  field.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); submit(); }
+    if (e.key === 'Escape' && state.streaming) stop();
+  });
+  askBtn.addEventListener('click', function(){
+    if (state.streaming) stop(); else submit();
+  });
+
+  function submit(){
+    if (state.streaming) return;
+    var text = field.value.trim();
+    if (!text) return;
+    field.value = ''; field.style.height = 'auto';
+    document.body.classList.add('live');
+    send(text);
+  }
+  function stop(){
+    if (state.controller) state.controller.abort();
+  }
+  function setStreaming(on){
+    state.streaming = on;
+    askBtn.textContent = on ? 'Stop' : 'Ask';
+  }
+  function el(tag, cls, parent){
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function fmt(n){ return (n || 0).toLocaleString('en-GB'); }
+  function scrollEnd(){ window.scrollTo(0, document.body.scrollHeight); }
+
+  function send(text){
+    state.messages.push({ role:'user', content:text });
+    var you = el('div','turn turn-you',transcript); you.textContent = text;
+
+    var turn = el('div','turn',transcript);
+    var body = el('div','turn-omphi',turn);
+    var caret = el('span','caret',body);
+    var ledger = el('div','ledger',turn);
+    scrollEnd();
+
+    var answer = '';
+    var usage = { input:0, cacheRead:0, cacheWrite:0, output:0 };
+    state.controller = new AbortController();
+    setStreaming(true);
+
+    fetch('/api/omphi', {
+      method:'POST',
+      headers:{ 'content-type':'application/json', 'x-access-code':code },
+      body: JSON.stringify({ messages: state.messages }),
+      signal: state.controller.signal
+    }).then(function(res){
+      if (!res.ok){
+        return res.json().catch(function(){ return {}; }).then(function(e){
+          if (res.status === 401){
+            try { localStorage.removeItem('omphi_code'); } catch(_){}
+            code = '';
+            showGate('That code was not accepted. Enter it again.');
+          }
+          throw new Error((e && e.error && e.error.message) || ('HTTP ' + res.status));
+        });
+      }
+      var reader = res.body.getReader();
+      var dec = new TextDecoder();
+      var buf = '';
+      function pump(){
+        return reader.read().then(function(r){
+          if (r.done) return;
+          buf += dec.decode(r.value, { stream:true });
+          var i;
+          while ((i = buf.indexOf('\n\n')) !== -1){
+            var chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+            chunk.split('\n').forEach(function(line){
+              if (line.indexOf('data:') !== 0) return;
+              var payload = line.slice(5).trim();
+              if (!payload) return;
+              var ev; try { ev = JSON.parse(payload); } catch(_) { return; }
+              if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta'){
+                answer += ev.delta.text;
+                body.textContent = answer;
+                body.appendChild(caret);
+              } else if (ev.type === 'message_start'){
+                var u = (ev.message && ev.message.usage) || {};
+                usage.input = u.input_tokens || 0;
+                usage.cacheRead = u.cache_read_input_tokens || 0;
+                usage.cacheWrite = u.cache_creation_input_tokens || 0;
+              } else if (ev.type === 'message_delta'){
+                if (ev.usage && ev.usage.output_tokens) usage.output = ev.usage.output_tokens;
+              } else if (ev.type === 'error'){
+                throw new Error((ev.error && ev.error.message) || 'Stream error.');
+              }
+            });
+          }
+          scrollEnd();
+          return pump();
+        });
+      }
+      return pump();
+    }).then(function(){
+      ledger.textContent = 'in ' + fmt(usage.input + usage.cacheRead + usage.cacheWrite)
+        + ' · cached ' + fmt(usage.cacheRead)
+        + ' · out ' + fmt(usage.output);
+    }).catch(function(err){
+      if (err && err.name === 'AbortError'){
+        ledger.textContent = 'stopped';
+      } else {
+        var e = el('div','errline',turn);
+        e.textContent = (err && err.message) || 'Something failed.';
+        ledger.textContent = '';
+      }
+    }).then(function(){
+      caret.remove();
+      setStreaming(false);
+      state.controller = null;
+      if (answer){
+        state.messages.push({ role:'assistant', content:answer });
+      } else {
+        state.messages.pop(); // failed turn: retract so a retry re-sends cleanly
+      }
+    });
+  }
+
+  if (code) showApp(); else showGate();
+})();
+</script>
 </body>
 </html>
