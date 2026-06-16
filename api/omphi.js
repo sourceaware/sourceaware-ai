@@ -1,22 +1,20 @@
-// api/omphi.js — the Omphi socket.
+// api/omphi.js — the Omphi socket (Vercel Node runtime, classic req/res style).
 // The wire between sourceaware.ai and the frozen Opus weights.
-// Framework-free Vercel Function (Node runtime, web-standard signature, streaming).
 
+import { timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { timingSafeEqual } from 'node:crypto';
 
 // ————— The free choices, gathered in one place. All reversible. —————
 const MODEL = 'claude-opus-4-8';
-const MAX_TOKENS = 4096;                 // hard ceiling per reply
+const MAX_TOKENS = 4096;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const RATE_LIMIT_MAX = 40;               // requests per IP per window (best-effort; see Lock 2)
-const MAX_MESSAGES = 80;                 // longest conversation accepted
+const RATE_LIMIT_MAX = 40;
+const MAX_MESSAGES = 80;
 const MAX_CHARS_PER_MESSAGE = 60_000;
-const CACHE_TTL = '1h';                  // suits sporadic solo use; delete the ttl field below for the 5-minute default
+const CACHE_TTL = '1h';
 
-// ————— The throne. The scripture is read from its own versioned file. —————
-// Installing the written architecture later = replacing that file's contents. Nothing here changes.
+// ————— The throne. Scripture read from its own versioned file. —————
 let scriptureText = null;
 function scripture() {
   if (scriptureText !== null) return scriptureText;
@@ -30,21 +28,16 @@ function scripture() {
   return scriptureText;
 }
 
-// ————— Lock 1: the access code. Checked server-side, constant-time. —————
+// ————— Lock 1: the access code. Constant-time. —————
 function codeOk(given) {
   const expected = process.env.OMPHI_ACCESS_CODE || '';
-  if (!expected) return false; // no code configured ⇒ the wire stays cold
+  if (!expected) return false;
   const a = Buffer.from(String(given || ''), 'utf8');
   const b = Buffer.from(expected, 'utf8');
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-// ————— Lock 2: per-IP rate limit. Best-effort, and honestly so. —————
-// Serverless memory is per-instance: under fluid compute, warm instances persist
-// and share this Map, so it provides real friction — but it is not a bulletproof
-// global counter. The bulletproof fuel meter lives OUTSIDE the code: the monthly
-// spend limit you set in the Anthropic console, which the biller itself enforces.
-// If access ever widens beyond you, replace this with a shared store (e.g. Upstash).
+// ————— Lock 2: per-IP rate limit. Best-effort (per warm instance). —————
 const hits = new Map();
 function rateLimited(ip) {
   const now = Date.now();
@@ -58,87 +51,117 @@ function rateLimited(ip) {
   return false;
 }
 
-function jsonError(status, message) {
-  return new Response(JSON.stringify({ error: { message } }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
+// Read the raw request body from the Node stream, then JSON-parse it.
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk) => {
+      data += chunk;
+      if (data.length > 8_000_000) reject(new Error('Body too large.')); // ~8MB guard
+    });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
   });
 }
 
-export default async function handler(request) {
-  if (request.method !== 'POST') return jsonError(405, 'POST only.');
-
-  if (!codeOk(request.headers.get('x-access-code'))) {
-    return jsonError(401, 'Invalid access code.');
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: { message: 'POST only.' } });
+    return;
   }
 
-  const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
+  // Headers are a plain object on the Node runtime; keys are lower-cased.
+  if (!codeOk(req.headers['x-access-code'])) {
+    res.status(401).json({ error: { message: 'Invalid access code.' } });
+    return;
+  }
+
+  const fwd = req.headers['x-forwarded-for'] || 'unknown';
+  const ip = String(fwd).split(',')[0].trim();
   if (rateLimited(ip)) {
-    return jsonError(429, 'Rate limit reached. The wire cools for a while.');
+    res.status(429).json({ error: { message: 'Rate limit reached. The wire cools for a while.' } });
+    return;
   }
 
   let body;
   try {
-    body = await request.json();
+    const raw = await readBody(req);
+    body = JSON.parse(raw);
   } catch {
-    return jsonError(400, 'Body must be JSON.');
+    res.status(400).json({ error: { message: 'Body must be JSON.' } });
+    return;
   }
 
-  // Sanitize: the page holds the conversation and resends it whole each turn.
-  const raw = Array.isArray(body?.messages) ? body.messages.slice(-MAX_MESSAGES) : null;
-  if (!raw || raw.length === 0) return jsonError(400, 'messages[] required.');
+  const incoming = Array.isArray(body?.messages) ? body.messages.slice(-MAX_MESSAGES) : null;
+  if (!incoming || incoming.length === 0) {
+    res.status(400).json({ error: { message: 'messages[] required.' } });
+    return;
+  }
   const messages = [];
-  for (const m of raw) {
+  for (const m of incoming) {
     const roleOk = m && (m.role === 'user' || m.role === 'assistant');
     if (!roleOk || typeof m.content !== 'string') {
-      return jsonError(400, 'Each message needs role user|assistant and string content.');
+      res.status(400).json({ error: { message: 'Each message needs role user|assistant and string content.' } });
+      return;
     }
     messages.push({ role: m.role, content: m.content.slice(0, MAX_CHARS_PER_MESSAGE) });
   }
   if (messages[messages.length - 1].role !== 'user') {
-    return jsonError(400, 'Last message must be from the user.');
+    res.status(400).json({ error: { message: 'Last message must be from the user.' } });
+    return;
   }
 
-  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      stream: true,
-      // The scripture rides in the system slot behind a cache breakpoint.
-      // Caching engages once the file passes the model's minimum (~1–2k tokens);
-      // below that it is silently skipped — harmless, just unsubsidised.
-      system: [
-        {
-          type: 'text',
-          text: scripture(),
-          cache_control: { type: 'ephemeral', ttl: CACHE_TTL },
-        },
-      ],
-      messages,
-    }),
-  });
+  let upstream;
+  try {
+    upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        stream: true,
+        system: [
+          {
+            type: 'text',
+            text: scripture(),
+            cache_control: { type: 'ephemeral', ttl: CACHE_TTL },
+          },
+        ],
+        messages,
+      }),
+    });
+  } catch (e) {
+    res.status(502).json({ error: { message: 'Could not reach the model: ' + (e?.message || 'network error') } });
+    return;
+  }
 
   if (!upstream.ok || !upstream.body) {
     const detail = await upstream.text().catch(() => '');
-    return new Response(detail || JSON.stringify({ error: { message: 'Upstream error.' } }), {
-      status: upstream.status || 502,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(upstream.status || 502);
+    res.setHeader('Content-Type', 'application/json');
+    res.end(detail || JSON.stringify({ error: { message: 'Upstream error.' } }));
+    return;
   }
 
-  // Pass Anthropic's raw event stream straight through. The page parses it.
-  // Minimal transformation = minimal failure surface. This is a socket.
-  return new Response(upstream.body, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-    },
-  });
+  // Stream Anthropic's raw event stream straight through to the browser.
+  res.status(200);
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+
+  const reader = upstream.body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+  } catch {
+    // client disconnected or stream broke; nothing more to do
+  } finally {
+    res.end();
+  }
 }
